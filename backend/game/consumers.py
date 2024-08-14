@@ -1,23 +1,27 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from . import game
 
+
+# This dictionary will store the room name as key and the number of players in the room as value
 roomsNames = {}
 
-def GetRoomName():
-    for id, room in roomsNames.items():
-        if room['isFree']:
-            room['isFree'] = False
-            return room['name']
-    new_room_id = len(roomsNames) + 1
-    roomsNames[new_room_id] = {
-        'name': "room" + str(new_room_id),
-        'isFree': True
-    }
-    return roomsNames[new_room_id]['name']
+# Constants
+# Game
+WINNING_SCORE = 10
 
+# ball
+BALL_START_SPEED = 1
+BALL_MAX_SPEED = 10
+SPEED = .1
+BALL_RADIUS = 10
+
+
+
+# this class will handle the websocket connection
 class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_name = GetRoomName()
+        self.room_name = game.GetRoomName(roomsNames)
         self.room_group_name = 'game_' + self.room_name
         print(self.room_group_name)
 
@@ -32,10 +36,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             {
                 'type': 'game_message',
-                'message': {
-                    'type': 'playerDIr',
-                    'dir': 'left',
-                }
+                'message': "message"
             }
         )
     
@@ -49,16 +50,37 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         message = text_data_json['message']
+        if message['type'] == 'definePlayer':
+            game.definePlayers(message)
+        elif message['type'] == 'update':
+            game.update()
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'game_message',
+                    'message': {
+                        'type': 'render',
+                        'RightPlayer': game.RightPlayer,
+                        'LeftPlayer': game.LeftPlayer,
+                        'Ball': game.Ball
+                    }
+                }
+            )
+        elif message['type'] == 'playerMove':
+            game.handlePlayerMove(message)
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'game_message',
+                    'message': {
+                        'type': 'playerMove',
+                        'RightPlayer': game.RightPlayer,
+                        'LeftPlayer': game.LeftPlayer,
+                    }
+                }
+            )
 
-        # Send message to room group
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'game_message',
-                'message': message
-            }
-        )
-    
+        
     async def game_message(self, event):
         message = event['message']
 
