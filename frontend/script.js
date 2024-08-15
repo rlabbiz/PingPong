@@ -7,10 +7,6 @@ let gameStarted = false
 let playerDir = 'right'
 
 // open socket connection
-const socket = new WebSocket('ws://127.0.0.1:8000/ws/game/')
-socket.onopen = function() {
-    console.log('Connection is open');
-}
 
 // handle the player direction from the server
 function handlePlayerDir(dir) {
@@ -18,34 +14,37 @@ function handlePlayerDir(dir) {
     console.log('Player dir: ', playerDir)
 }
 
-socket.onmessage = function(event) {
-    const data = JSON.parse(event.data)
-    console.log('Message from server: ', data.message);
-    if (data.message.type == 'playerDIr')
-        handlePlayerDir(data.message.dir)
+function updateGame(data) {
+    RightPlayer = data.RightPlayer
+    LeftPlayer = data.LeftPlayer
+    Ball = data.Ball
+    console.log('RightPlayer: ', RightPlayer)
+    console.log('LeftPlayer: ', LeftPlayer)
+    console.log('Ball: ', Ball)
+    // render()
 }
 
 // define game constants
-    // game
-    WINNING_SCORE = 3
-    FPS = 60
-    
-    // ball
-    BALL_START_SPEED = 1
-    BALL_MAX_SPEED = 10
-    SPEED = .1
-    BALL_RADIUS = 10
+// game
+WINNING_SCORE = 3
+FPS = 60
 
-    // player 
-    PLAYER_COLOR = '#508C9B'
-    PLAYER_WIDTH = 15
-    PLAYER_HEIGHT = 150
+// ball
+BALL_START_SPEED = 1
+BALL_MAX_SPEED = 10
+SPEED = .1
+BALL_RADIUS = 10
 
-    // AI
-    AI_LEVEL = 0.1
+// player 
+PLAYER_COLOR = '#508C9B'
+PLAYER_WIDTH = 15
+PLAYER_HEIGHT = 150
 
-    // Net
-    NET_SPACE = 5
+// AI
+AI_LEVEL = 0.1
+
+// Net
+NET_SPACE = 5
 
 
 // Game Objects
@@ -57,17 +56,17 @@ const Net = {
     color: '#201E43'
 }
 
-const Ball = {
+let Ball = {
     x: canvas.width / 2,
     y: canvas.height / 2,
     radius: 10,
-    speed: 1,
+    speed: 1.00,
     velocityX: 5,
     velocityY: 5,
     color: '#EEEEEE'
 }
 
-const RightPlayer = {
+let RightPlayer = {
     x: 0,
     y: canvas.height / 2 - PLAYER_HEIGHT / 2,
     width: PLAYER_WIDTH,
@@ -76,13 +75,43 @@ const RightPlayer = {
     score: 0,
 }
 
-const LeftPlayer = {
+let LeftPlayer = {
     x: canvas.width - PLAYER_WIDTH,
     y: canvas.height / 2 - PLAYER_HEIGHT / 2,
     width: PLAYER_WIDTH,
     height: PLAYER_HEIGHT,
     color: PLAYER_COLOR,
     score: 0,
+}
+
+const socket = new WebSocket('ws://127.0.0.1:8000/ws/game/')
+socket.onopen = function() {
+    socket.send(JSON.stringify({
+        'message': {
+            'type': 'definePlayer',
+            'RightPlayer': RightPlayer,
+            'LeftPlayer': LeftPlayer,
+            'Ball': Ball,
+            'canvasWidth': canvas.width,
+            'canvasHeight': canvas.height,
+        }
+    }))
+}
+
+function handlePlayerMove(data) {
+    RightPlayer = data.RightPlayer
+    LeftPlayer = data.LeftPlayer
+}
+
+socket.onmessage = function(event) {
+    console.log('Message from server: ');
+    const data = JSON.parse(event.data)
+    if (data.message.type == 'playerDIr')
+        handlePlayerDir(data.message.dir)
+    else if (data.message.type == 'render') 
+        updateGame(data.message)
+    else if (data.message.type == 'playerMove')
+        handlePlayerMove(data.message)
 }
 
 // Draw shapes and text
@@ -157,11 +186,6 @@ function lerp(a, b, n) {
     return (1 - n) * a + n * b
 }
 
-canvas.addEventListener('mousemove', (e) => {
-    let rect = canvas.getBoundingClientRect()
-    RightPlayer.y = e.clientY - rect.top - LeftPlayer.height / 2
-})
-
 function update() {
     Ball.x += Ball.velocityX * Ball.speed
     Ball.y += Ball.velocityY * Ball.speed
@@ -208,8 +232,13 @@ function pauseGame() {
     Ball.speed = 0
 }
 
-function game(){
-    update()
+async function game(){
+    // update()
+    await socket.send(JSON.stringify({
+        'message': {
+            'type': 'update'
+        }
+    }))
     render()
 }
 
@@ -218,6 +247,22 @@ render()
 
 // start game
 function startGame() {
+    canvas.addEventListener('mousemove', (e) => {
+        let rect = canvas.getBoundingClientRect()
+        let y;
+        if (playerDir == 'right')
+            y = e.clientY - rect.top - LeftPlayer.height / 2
+        else if (playerDir == 'left')
+            y = e.clientY - rect.top - LeftPlayer.height / 2
+        socket.send(JSON.stringify({
+            'message': {
+                'type': 'playerMove',
+                'dir': playerDir,
+                'y': y,
+            }
+        }))
+    })
     Ball.speed = BALL_START_SPEED
+    // Ball.speed = 
     setInterval(game, 1000 / FPS)
 }   
