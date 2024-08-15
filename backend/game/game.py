@@ -1,6 +1,7 @@
 import math
 import uuid
 
+Rooms = {}
 RightPlayer = {}
 LeftPlayer = {}
 Ball = {}
@@ -28,20 +29,22 @@ def GetRoomName(roomsNames):
     
     return roomsNames[new_room_id]['name']
 
-def definePlayers(message):
-    global RightPlayer, LeftPlayer, Ball, canvasWidth, canvasHeight
-    LeftPlayer = message['LeftPlayer']
-    RightPlayer = message['RightPlayer']
-    Ball = message['Ball']
+def definePlayers(message, roomName):
+    global Rooms, canvasWidth, canvasHeight
+    Rooms[roomName] = {
+        'LeftPlayer': message['LeftPlayer'],
+        'RightPlayer': message['RightPlayer'],
+        'Ball': message['Ball'],
+    }
     canvasWidth = message['canvasWidth']
     canvasHeight = message['canvasHeight']
 
-def handlePlayerMove(message):
-    global RightPlayer, LeftPlayer
+def handlePlayerMove(message, roomName):
+    global Rooms
     if message['dir'] == 'right':
-        RightPlayer['y'] = message['y']
+        Rooms[roomName]['RightPlayer']['y'] = message['y']
     else:
-        LeftPlayer['y'] = message['y']
+        Rooms[roomName]['LeftPlayer']['y'] = message['y']
 
 
 def collision(ball, player):
@@ -66,51 +69,52 @@ def collision(ball, player):
 def lerp(a, b, n):
     return (1 - n) * a + n * b
 
-def resetBall():
-    Ball['x'] = canvasWidth / 2
-    Ball['y'] = canvasHeight / 2
-    Ball['speed'] = BALL_START_SPEED
-    Ball['velocityX'] = -Ball['velocityX']
-    Ball['velocityY'] = -Ball['velocityY']
+def resetBall(roomName):
+    global Rooms
+    Rooms[roomName]['Ball']['x'] = canvasWidth / 2
+    Rooms[roomName]['Ball']['y'] = canvasHeight / 2
+    Rooms[roomName]['Ball']['speed'] = BALL_START_SPEED
+    Rooms[roomName]['Ball']['velocityX'] = -Rooms[roomName]['Ball']['velocityX']
+    Rooms[roomName]['Ball']['velocityY'] = -Rooms[roomName]['Ball']['velocityY']
 
-def update():
-    global RightPlayer, LeftPlayer, Ball
+def update(roomName):
+    global Rooms
     # Update ball position
-    Ball['x'] += Ball['velocityX'] * Ball['speed']
-    Ball['y'] += Ball['velocityY'] * Ball['speed']
+    Rooms[roomName]['Ball']['x'] += Rooms[roomName]['Ball']['velocityX'] * Rooms[roomName]['Ball']['speed']
+    # Rooms[roomName]['Ball']['y'] += Rooms[roomName]['Ball']['velocityY'] * Rooms[roomName]['Ball']['speed']
 
     # Check for collision with top and bottom walls
-    if Ball['y'] + Ball['radius'] > canvasHeight or Ball['y'] - Ball['radius'] < 0:
-        Ball['velocityY'] = -Ball['velocityY']
+    if Rooms[roomName]['Ball']['y'] + Rooms[roomName]['Ball']['radius'] > canvasHeight or Rooms[roomName]['Ball']['y'] - Rooms[roomName]['Ball']['radius'] < 0:
+        Rooms[roomName]['Ball']['velocityY'] = -Rooms[roomName]['Ball']['velocityY']
 
     # Determine which player to check for collision
-    player = RightPlayer if Ball['x'] < canvasWidth / 2 else LeftPlayer
+    player = Rooms[roomName]['RightPlayer'] if Rooms[roomName]['Ball']['x'] < canvasWidth / 2 else Rooms[roomName]['LeftPlayer']
 
     # Check for collision between ball and player
-    if collision(Ball, player):
-        collide_point = Ball['y'] - (player['y'] + player['height'] / 2)
+    if collision(Rooms[roomName]['Ball'], player):
+        collide_point = Rooms[roomName]['Ball']['y'] - (player['y'] + player['height'] / 2)
         collide_point /= (player['height'] / 2)
 
         angle_rad = collide_point * math.pi / 4
 
-        direction = 1 if Ball['x'] < canvasWidth / 2 else -1
+        direction = 1 if Rooms[roomName]['Ball']['x'] < canvasWidth / 2 else -1
 
-        Ball['velocityX'] = direction * Ball['speed'] * math.cos(angle_rad) * 5
-        Ball['velocityY'] = Ball['speed'] * math.sin(angle_rad) * 5
+        Rooms[roomName]['Ball']['velocityX'] = direction * Rooms[roomName]['Ball']['speed'] * math.cos(angle_rad) * 5
+        Rooms[roomName]['Ball']['velocityY'] = Rooms[roomName]['Ball']['speed'] * math.sin(angle_rad) * 5
 
         # Ball.speed += 1  # Uncomment if you want to increase speed
         # Ball.velocityX = -Ball.velocityX  # Uncomment if you want to reverse X velocity
-        # if Ball['speed'] < 1.8:
-        Ball['speed'] += SPEED
+        if Rooms[roomName]['Ball']['speed'] < 1.8:
+            Rooms[roomName]['Ball']['speed'] += SPEED
 
     # Check if the ball is out of bounds
-    if Ball['x'] - Ball['radius'] < 0:
-        LeftPlayer['score'] += 1
+    if Rooms[roomName]['Ball']['x'] - Rooms[roomName]['Ball']['radius'] < 0:
+        Rooms[roomName]['LeftPlayer']['score'] += 1
         resetBall()
-    elif Ball['x'] + Ball['radius'] > canvasWidth:
-        RightPlayer['score'] += 1
+    elif Rooms[roomName]['Ball']['x'] + Rooms[roomName]['Ball']['radius'] > canvasWidth:
+        Rooms[roomName]['RightPlayer']['score'] += 1
         resetBall()
 
     # Update left player position for AI
-    # target_position = Ball['y'] - RightPlayer['height'] / 2
+    # target_position = Rooms[roomName]['Ball']['y'] - RightPlayer['height'] / 2
     # LeftPlayer['y'] = lerp(LeftPlayer['y'], target_position, .2)

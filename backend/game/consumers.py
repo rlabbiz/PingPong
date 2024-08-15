@@ -58,10 +58,11 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         message = text_data_json['message']
+
         if message['type'] == 'definePlayer':
-            game.definePlayers(message)
+            game.definePlayers(message, self.room_group_name)
         elif message['type'] == 'update':
-            game.update()
+            game.update(self.room_group_name)
             await self.send(text_data=json.dumps(
                 {
                     'type': 'game_message',
@@ -74,7 +75,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                 }
             ))
         elif message['type'] == 'playerMove':
-            game.handlePlayerMove(message)
+            game.handlePlayerMove(message, self.room_group_name)
             print(self.room_group_name)
             await self.channel_layer.group_send(
                 self.room_group_name,
