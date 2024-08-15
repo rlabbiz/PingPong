@@ -1,4 +1,5 @@
 import math
+import uuid
 
 RightPlayer = {}
 LeftPlayer = {}
@@ -12,15 +13,19 @@ BALL_START_SPEED = 1
 
 
 def GetRoomName(roomsNames):
-    for id, room in roomsNames.items():
+    # Check for an available room
+    for room_id, room in roomsNames.items():
         if room['isFree']:
             room['isFree'] = False
             return room['name']
-    new_room_id = len(roomsNames) + 1
+    
+    # If no free room is available, create a new one
+    new_room_id = str(uuid.uuid4())  # Generate a unique room ID using UUID
     roomsNames[new_room_id] = {
-        'name': "room" + str(new_room_id),
-        'isFree': True
+        'name': f"room_{new_room_id}",
+        'isFree': False
     }
+    
     return roomsNames[new_room_id]['name']
 
 def definePlayers(message):
@@ -72,7 +77,7 @@ def update():
     global RightPlayer, LeftPlayer, Ball
     # Update ball position
     Ball['x'] += Ball['velocityX'] * Ball['speed']
-    # Ball['y'] += Ball['velocityY'] * Ball['speed']
+    Ball['y'] += Ball['velocityY'] * Ball['speed']
 
     # Check for collision with top and bottom walls
     if Ball['y'] + Ball['radius'] > canvasHeight or Ball['y'] - Ball['radius'] < 0:
@@ -90,24 +95,22 @@ def update():
 
         direction = 1 if Ball['x'] < canvasWidth / 2 else -1
 
-        Ball['velocityX'] = direction * Ball['speed'] * math.cos(angle_rad) * 8
-        Ball['velocityY'] = Ball['speed'] * math.sin(angle_rad) * 8
+        Ball['velocityX'] = direction * Ball['speed'] * math.cos(angle_rad) * 5
+        Ball['velocityY'] = Ball['speed'] * math.sin(angle_rad) * 5
 
         # Ball.speed += 1  # Uncomment if you want to increase speed
         # Ball.velocityX = -Ball.velocityX  # Uncomment if you want to reverse X velocity
+        # if Ball['speed'] < 1.8:
         Ball['speed'] += SPEED
 
     # Check if the ball is out of bounds
     if Ball['x'] - Ball['radius'] < 0:
         LeftPlayer['score'] += 1
         resetBall()
-        print(Ball['speed'])
     elif Ball['x'] + Ball['radius'] > canvasWidth:
         RightPlayer['score'] += 1
         resetBall()
-        print(Ball['speed'])
-    #    print("{.2f}".format(Ball['speed']))
 
     # Update left player position for AI
-    target_position = Ball['y'] - RightPlayer['height'] / 2
-    LeftPlayer['y'] = lerp(LeftPlayer['y'], target_position, .2)
+    # target_position = Ball['y'] - RightPlayer['height'] / 2
+    # LeftPlayer['y'] = lerp(LeftPlayer['y'], target_position, .2)

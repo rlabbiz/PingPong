@@ -16,11 +16,13 @@ BALL_MAX_SPEED = 10
 SPEED = .1
 BALL_RADIUS = 10
 
+isFirstPLayer = 0
 
 
 # this class will handle the websocket connection
 class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        global isFirstPLayer
         self.room_name = game.GetRoomName(roomsNames)
         self.room_group_name = 'game_' + self.room_name
         print(self.room_group_name)
@@ -30,15 +32,21 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
-
+        if isFirstPLayer == 0:
+            self.playerDir = 'right'
+            isFirstPLayer = 1
+        elif isFirstPLayer == 1:
+            self.playerDir = 'left'
+            isFirstPLayer = 0
+        
         await self.accept()
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'game_message',
-                'message': "message"
-            }
-        )
+        await self.send(text_data=json.dumps({
+            'type': 'game_message',
+                'message': {
+                    'type': 'playerDir',
+                    'dir': self.playerDir,
+                }
+        }))
     
     async def disconnect(self, close_code):
         # Leave room group
@@ -54,8 +62,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             game.definePlayers(message)
         elif message['type'] == 'update':
             game.update()
-            await self.channel_layer.group_send(
-                self.room_group_name,
+            await self.send(text_data=json.dumps(
                 {
                     'type': 'game_message',
                     'message': {
@@ -65,9 +72,10 @@ class GameConsumer(AsyncWebsocketConsumer):
                         'Ball': game.Ball
                     }
                 }
-            )
+            ))
         elif message['type'] == 'playerMove':
             game.handlePlayerMove(message)
+            print(self.room_group_name)
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {

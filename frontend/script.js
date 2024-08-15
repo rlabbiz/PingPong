@@ -21,7 +21,6 @@ function updateGame(data) {
     console.log('RightPlayer: ', RightPlayer)
     console.log('LeftPlayer: ', LeftPlayer)
     console.log('Ball: ', Ball)
-    // render()
 }
 
 // define game constants
@@ -106,7 +105,7 @@ function handlePlayerMove(data) {
 socket.onmessage = function(event) {
     console.log('Message from server: ');
     const data = JSON.parse(event.data)
-    if (data.message.type == 'playerDIr')
+    if (data.message.type == 'playerDir')
         handlePlayerDir(data.message.dir)
     else if (data.message.type == 'render') 
         updateGame(data.message)
