@@ -6,6 +6,8 @@ let gameStarted = false
 
 let playerDir = 'right'
 
+let gomeLoop
+
 // open socket connection
 
 // handle the player direction from the server
@@ -102,6 +104,14 @@ function handlePlayerMove(data) {
     LeftPlayer = data.LeftPlayer
 }
 
+function endGame() {
+    clearInterval(gameLoop)
+    canvas.removeEventListener('mousemove', (e) => {
+        console.log('Mouse move event removed')
+    })
+    render()
+}
+
 socket.onmessage = function(event) {
     console.log('Message from server: ');
     const data = JSON.parse(event.data)
@@ -111,6 +121,10 @@ socket.onmessage = function(event) {
         updateGame(data.message)
     else if (data.message.type == 'playerMove')
         handlePlayerMove(data.message)
+    else if (data.message.type == 'start')
+        startGame()
+    else if (data.message.type == 'end')
+        endGame()
 }
 
 // Draw shapes and text
@@ -246,6 +260,7 @@ render()
 
 // start game
 function startGame() {
+    printCountdown()
     canvas.addEventListener('mousemove', (e) => {
         let rect = canvas.getBoundingClientRect()
         let y;
@@ -261,7 +276,28 @@ function startGame() {
             }
         }))
     })
+    canvas.removeEventListener('mousemove', (e) => {
+        console.log('Mouse move event removed')
+    })
     Ball.speed = BALL_START_SPEED
     // Ball.speed = 
-    setInterval(game, 1000 / FPS)
+    gameLoop = setInterval(game, 1000 / FPS)
 }   
+
+
+function printCountdown() {
+    let count = 3; // Starting number
+    const intervalTime = 1000; // 1 second interval
+  
+    // Set an interval to print the numbers
+    const intervalId = setInterval(() => {
+      console.log(count);
+      count--; // Decrease the number to print the next one
+  
+      // Stop the interval when the count goes below 1
+      if (count < 1) {
+        clearInterval(intervalId);
+      }
+    }, intervalTime);
+  }
+  

@@ -13,20 +13,18 @@ SPEED = 0.1
 BALL_START_SPEED = 1
 
 
+changeSpeed = False
+
 def GetRoomName(roomsNames):
-    # Check for an available room
-    for room_id, room in roomsNames.items():
+    for id, room in roomsNames.items():
         if room['isFree']:
             room['isFree'] = False
             return room['name']
-    
-    # If no free room is available, create a new one
-    new_room_id = str(uuid.uuid4())  # Generate a unique room ID using UUID
+    new_room_id = len(roomsNames) + 1
     roomsNames[new_room_id] = {
-        'name': f"room_{new_room_id}",
-        'isFree': False
+        'name': "room" + str(new_room_id),
+        'isFree': True
     }
-    
     return roomsNames[new_room_id]['name']
 
 def definePlayers(message, roomName):
@@ -78,10 +76,10 @@ def resetBall(roomName):
     Rooms[roomName]['Ball']['velocityY'] = -Rooms[roomName]['Ball']['velocityY']
 
 def update(roomName):
-    global Rooms
+    global Rooms, changeSpeed
     # Update ball position
     Rooms[roomName]['Ball']['x'] += Rooms[roomName]['Ball']['velocityX'] * Rooms[roomName]['Ball']['speed']
-    # Rooms[roomName]['Ball']['y'] += Rooms[roomName]['Ball']['velocityY'] * Rooms[roomName]['Ball']['speed']
+    Rooms[roomName]['Ball']['y'] += Rooms[roomName]['Ball']['velocityY'] * Rooms[roomName]['Ball']['speed']
 
     # Check for collision with top and bottom walls
     if Rooms[roomName]['Ball']['y'] + Rooms[roomName]['Ball']['radius'] > canvasHeight or Rooms[roomName]['Ball']['y'] - Rooms[roomName]['Ball']['radius'] < 0:
@@ -102,18 +100,21 @@ def update(roomName):
         Rooms[roomName]['Ball']['velocityX'] = direction * Rooms[roomName]['Ball']['speed'] * math.cos(angle_rad) * 5
         Rooms[roomName]['Ball']['velocityY'] = Rooms[roomName]['Ball']['speed'] * math.sin(angle_rad) * 5
 
-        # Ball.speed += 1  # Uncomment if you want to increase speed
-        # Ball.velocityX = -Ball.velocityX  # Uncomment if you want to reverse X velocity
-        if Rooms[roomName]['Ball']['speed'] < 1.8:
+        if Rooms[roomName]['Ball']['speed'] < 1.7 and changeSpeed == True:
+            if changeSpeed:
+                changeSpeed = False
             Rooms[roomName]['Ball']['speed'] += SPEED
+        elif changeSpeed == False:
+            changeSpeed = True
+            
 
     # Check if the ball is out of bounds
     if Rooms[roomName]['Ball']['x'] - Rooms[roomName]['Ball']['radius'] < 0:
         Rooms[roomName]['LeftPlayer']['score'] += 1
-        resetBall()
+        resetBall(roomName)
     elif Rooms[roomName]['Ball']['x'] + Rooms[roomName]['Ball']['radius'] > canvasWidth:
         Rooms[roomName]['RightPlayer']['score'] += 1
-        resetBall()
+        resetBall(roomName)
 
     # Update left player position for AI
     # target_position = Rooms[roomName]['Ball']['y'] - RightPlayer['height'] / 2

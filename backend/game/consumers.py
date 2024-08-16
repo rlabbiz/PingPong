@@ -25,7 +25,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         global isFirstPLayer
         self.room_name = game.GetRoomName(roomsNames)
         self.room_group_name = 'game_' + self.room_name
-        print(self.room_group_name)
+        # print(self.room_group_name)
 
         # Join room group
         await self.channel_layer.group_add(
@@ -47,6 +47,19 @@ class GameConsumer(AsyncWebsocketConsumer):
                     'dir': self.playerDir,
                 }
         }))
+
+        # Check if the room is full and send a message to the players to start the game
+        if isFirstPLayer == 0:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'game_message',
+                    'message': {
+                        'type': 'start',
+                    }
+                }
+            )
+
     
     async def disconnect(self, close_code):
         # Leave room group
@@ -54,6 +67,16 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             self.channel_name
         )
+
+        await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'game_message',
+                    'message': {
+                        'type': 'end',
+                    }
+                }
+            )
     
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
@@ -63,17 +86,18 @@ class GameConsumer(AsyncWebsocketConsumer):
             game.definePlayers(message, self.room_group_name)
         elif message['type'] == 'update':
             game.update(self.room_group_name)
-            await self.send(text_data=json.dumps(
+            await self.channel_layer.group_send(
+                self.room_group_name,
                 {
                     'type': 'game_message',
                     'message': {
                         'type': 'render',
-                        'RightPlayer': game.RightPlayer,
-                        'LeftPlayer': game.LeftPlayer,
-                        'Ball': game.Ball
+                        'RightPlayer': game.Rooms[self.room_group_name]['RightPlayer'],
+                        'LeftPlayer': game.Rooms[self.room_group_name]['LeftPlayer'],
+                        'Ball': game.Rooms[self.room_group_name]['Ball']
                     }
                 }
-            ))
+            )
         elif message['type'] == 'playerMove':
             game.handlePlayerMove(message, self.room_group_name)
             print(self.room_group_name)
@@ -83,8 +107,8 @@ class GameConsumer(AsyncWebsocketConsumer):
                     'type': 'game_message',
                     'message': {
                         'type': 'playerMove',
-                        'RightPlayer': game.RightPlayer,
-                        'LeftPlayer': game.LeftPlayer,
+                        'RightPlayer': game.Rooms[self.room_group_name]['RightPlayer'],
+                        'LeftPlayer': game.Rooms[self.room_group_name]['LeftPlayer'],
                     }
                 }
             )
